@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Management App</title>
+</head>
+<body>
+  <h1>Add Book</h1>
+  <form id="addBookForm">
+    <label for="bookName">Book Name:</label>
+    <input type="text" id="bookName" name="bookName" required><br>
+  
+    <label for="author">Author:</label>
+    <input type="text" id="author" name="author" required><br>
+  
+    <label for="takeOn">Take On:</label>
+    <input type="date" id="takeOn" name="takeOn" required><br>
+  
+    <label for="deliverAt">Deliver At:</label>
+    <input type="date" id="deliverAt" name="deliverAt" required><br>
+  
+    <label for="fine">Fine:</label>
+    <input type="text" id="fine" name="fine"><br>
+    <button type="submit">Add Book</button>
+  </form>
+
+  <h1>Search Books</h1>
+  <form id="searchBooksForm">
+    <label for="searchTerm">Search Term:</label>
+    <input type="text" id="searchTerm" name="searchTerm" required>
+    <button type="button" onclick="searchBooks()">Search</button>
+  </form>
+  <div id="searchResults"></div>
+  <ul id="bookList"></ul>
+  <ul id="returnedBookList"><h1>ReturnedBooks</h1></ul>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    const addBookForm = document.getElementById('addBookForm');
+    const searchBooksForm = document.getElementById('searchBooksForm');
+    const bookList = document.getElementById('bookList');
+    const returnedBookList = document.getElementById('returnedBookList');
+
+    addBookForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const formData = new FormData(addBookForm);
+      const bookData = {};
+      formData.forEach((value, key) => {
+        bookData[key] = value;
+      });
+
+      axios.post('http://localhost:3000/addBook', bookData)
+        .then(response => {
+          alert(response.data.message);
+        })
+        .catch(error => {
+          alert('Error adding book');
+        });
+
+      addBookForm.reset();
+    });
+
+    function searchBooks() {
+      const searchTerm = document.getElementById('searchTerm').value;
+
+      document.getElementById('searchTerm').value = '';
+      clearResults();
+
+      axios.get(`http://localhost:3000/searchBooks?term=${searchTerm}`)
+        .then(response => {
+          const books = response.data;
+          renderBookList(books);
+        })
+        .catch(error => {
+          alert('Error searching books');
+        });
+    }
+
+    function clearResults() {
+      bookList.innerHTML = '';
+    }
+
+    function renderBookList(books) {
+  books.forEach(book => {
+    const li = document.createElement('li');
+    li.textContent = `Name: ${book.bookName}, Author: ${book.author}, Takes On: ${book.takeOn}, Deliver At: ${book.deliverAt}, Fine: ${book.fine}`;
+
+    const returnButton = document.createElement('button');
+    returnButton.textContent = 'Return';
+
+    returnButton.addEventListener('click', () => {
+      axios.post('/returnBook', { bookId: book.id })
+        .then(response => {
+          alert(response.data.message);
+          // Update the DOM to show the returned book
+          renderReturnedBook(book);
+          // Check if fine is greater than 0, and render "Pay Fine" button in search results
+          if (book.fine > 0) {
+            renderPayFineButtonInSearchResults(book);
+          } else {
+            clearResults();
+          }
+        })
+        .catch(error => {
+          alert('Error returning book');
+        });
+    });
+
+    li.appendChild(returnButton);
+    bookList.appendChild(li);
+
+    // Add a line break after each book entry
+    const lineBreak = document.createElement('br');
+    bookList.appendChild(lineBreak);
+    
+    // Set the CSS display property to block for each li element
+    li.style.display = 'block';
+  });
+}
+    function renderReturnedBook(book) {
+      // Add the returned book to the returnedBookList with specific fields
+      const returnedLi = document.createElement('li');
+      returnedLi.textContent = `Returned: ${book.bookName}, Deliver At: ${book.deliverAt}, Fine: ${book.fine}`;
+      returnedBookList.appendChild(returnedLi);
+    }
+
+    function renderPayFineButtonInSearchResults(book) {
+      // Render "Pay Fine" button in search results
+      const payFineButton = document.createElement('button');
+      payFineButton.textContent = `Pay Fine: ${book.fine}`;
+      payFineButton.addEventListener('click', () => {
+        payFineAndReturnBook(book);
+      });
+
+      // Append the "Pay Fine" button to the search results
+      const lis = bookList.querySelectorAll('li');
+      lis.forEach(li => {
+        if (li.textContent.includes(book.bookName)) {
+          li.appendChild(payFineButton);
+        }
+      });
+    }
+
+    function payFineAndReturnBook(book) {
+      // Implement the logic to handle fine payment
+      alert(`Paid Fine for ${book.bookName}: ${book.fine}`);
+      // Additional logic for handling fine payment can be added here
+      // Remove the Pay Fine button after payment
+      clearPayFineButton();
+    }
+
+    function clearPayFineButton() {
+      // Remove all Pay Fine buttons from search results
+      const payFineButtons = bookList.querySelectorAll('button');
+      payFineButtons.forEach(button => {
+        button.remove();
+        
+      bookList.innerHTML = '';
+    
+      });
+    }
+  </script>
+</body>
+</html>
